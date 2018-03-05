@@ -1,0 +1,7 @@
+// vim: textwidth=80
+
+The traces with data values and memory addresses are not distributed with the
+framework due to their large size.  If you need these traces, they total
+approximately 550 megabytes, and you will need to download them separately and
+place them in this directory.
+

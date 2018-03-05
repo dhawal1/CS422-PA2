@@ -1,0 +1,154 @@
+// vim: textwidth=80
+
+Welcome to the third version of the cbp framework.  We believe this is the final
+version.  However, if there are features that you require for your branch
+predictor that are not yet included, let us (Chris Wilkerson and Jared Stark)
+know and we will consider adding them and releasing another version.
+
+Here are some points to remember:
+* The framework is NOT foolproof.  You are responsible for making sure you use
+  the framework correctly.
+* All source code is provided to maximize flexibility.  This means you have
+  unfettered access to the bowels of the trace reader and it might be tempting
+  to make changes.  Just make sure that for the submission ALL code can be
+  submitted as the predictor (predictor.h and predictor.cc).
+
+****************************************
+* OVERVIEW OF THE FRAMEWORK
+****************************************
+
+The framework contains the following files and directories:
+  README            : this file
+  Makefile          : makefile for building a cbp submission
+  SConstruct        : for building w/ scons instead of make; see comment in file
+  main.cc           : the driver
+  predictor.h       : the predictor--substitute your predictor here
+  predictor.cc      : same as above
+  BASELINE          : mispredict rates for the distributed predictor.h
+  tread.h           : trace reader; defines branch_record_c & cbp_trace_reader_c
+  tread.cc          : same as above
+  op_state.h        : defines architectural state (op_state_c)
+  op_state.cc       : same as above
+  cbp_assert.h      : trace reader implementation details--DO NOT MODIFY
+  cbp_fatal.h       : trace reader implementation details--DO NOT MODIFY
+  cbp_inst.h        : trace reader implementation details--DO NOT MODIFY
+  cbp_inst.cc       : trace reader implementation details--DO NOT MODIFY
+  cond_pred.h       : trace reader implementation details--DO NOT MODIFY
+  finite_stack.h    : trace reader implementation details--DO NOT MODIFY
+  indirect_pred.h   : trace reader implementation details--DO NOT MODIFY
+  stride_pred.h     : trace reader implementation details--DO NOT MODIFY
+  value_cache.h     : trace reader implementation details--DO NOT MODIFY
+  gen_report.pl     : script for generating a report of the mispredict rates
+  traces/           : directory containing the traces
+    without-values/ : traces without data values and memory addresses 
+    with-values/    : traces with data values and memory addresses
+      
+****************************************
+* CREATING A SUBMISSION
+****************************************
+
+For your submission, you may will need to include your own predictor.h/
+predictor.cc, and may need to change the Makefile (or SConstruct file, if you
+decide to use SCons).  You should not need to change any other parts of the
+framework.  tread.h and op_state.h define classes for the trace reader, branch
+information (branch_record_c), and architectural state (op_state_c), so you will
+need to examine those files.  You should be able to ignore all other files.
+
+The driver (main.cc) will call two methods in the submitted predictor:
+1. get_prediction(const branch_record_c* br, const op_state_c* os): information
+   about the branch is passed through the branch record from the driver to
+   predictor algorithm.  Information about the architectural state is passed
+   through op_state to the predictor algorithm.  Your predictor should use the
+   information provided to generate a prediction.  
+2. update_prediction(const branch_record_c* br, const op_state_c* os, bool
+   taken): information about the branch is passed through the branch record from
+   the driver to predictor algorithm.  Information about the architectural state
+   is passed through op_state to the predictor algorithm.  The third argument
+   contains the actual result of the branch.  Your predictor should use the
+   information provided to update the branch predictor.  
+The driver will also call the trace reader with your prediction so that the
+framework can take statistics on whether or not the prediction was correct.  The
+driver and predictor (predictor.h and predictor.cc) in the framework provides an
+example of how all this should work for a 15-bit gshare predictor. 
+
+****************************************
+* BUILDING A SUBMISSION
+****************************************
+
+To build the trace reader, driver, and predictor, type "make" (or "scons" if you
+decide to use SCons).  When we evaluate your submission, we will use gcc/g++
+v3.3.2 (or later) and evaluate it on an x86 GNU/Linux system.  So make your code
+as portable as possible; e.g., stick to ANSI C/C++ and POSIX.
+
+****************************************
+* RUNNING A SUBMISSION
+****************************************
+
+To run your predictor, type "./predictor <trace>", where <trace> is the name of
+one of the traces in the "traces" subdirectory, without the ".bz2" extension.
+The output will look something like:
+    *********************************************************
+    1000*wrong_cc_predicts/total insts: 1000 *    18114 / 29499990 =   0.614
+    total branches:                   3818636
+    total cc branches:                3755315
+    total predicts:                   3755315
+    *********************************************************
+where the first statistic is the mispredict rate, in mispredicts per 1000
+instructions.  The output for the predictor distributed with the framework is
+given in the file BASELINE.
+
+There are 20 traces selected from 4 different classes of workloads.  Note that
+this differs from the original proposal in the CBP rules and regs.  The 4
+workload classes are: server, multi-media, specint, specfp.  Each of the branch
+traces is derived from an instruction trace consisting of 30 million
+instructions.  These traces include system activity--WHEN AN INTERRUPT OR
+EXCEPTION OCCURS THE PC (PROGRAM COUNTER) MAY CHANGE WITHOUT WARNING!
+
+There are two sets of traces: one without data values and memory addresses,
+which is in the traces/without-values directory; and one with data values and
+memory addresses, which is in the traces/with-values directory.  The
+without-values set is identical to the with-values set, except that all data
+values and memory addresses have been set to 0, and, as a result, the traces in
+this set are 25 times smaller than the traces in the with-values set.  The
+without-values set is distributed with the framework.  If you need the
+with-values set, it is approximately 550 megabytes, and you must download it
+separately.  Make sure you check the MD5 checksums (md5sum --check MD5SUMS)
+after you download it--we have had problems with traces getting corrupted.
+
+For your submission, you will need to report the mispredict rates for all 20
+traces.  The perl script gen_report.pl should be used to generate the report for
+your submission.  It will generate a report like the one in the file BASELINE.
+
+****************************************
+* PREDICTORS USING ARCHITECTUAL STATE
+****************************************
+
+A complex branch predictor is any branch predictor that uses state stored in the
+op_state_c class.  This will include any predictor that makes use of dataflow or
+data value information.  The op_state_c class keeps a list of the last 64
+instructions that have executed.  All non data-value/data address information is
+available as soon as an instruction is fetched.  Data values for a particular
+instruction become visible only after they are written to the register file
+"op_state_c::regs".  "op_state_c::regs_valid" indicates which of the registers
+is valid (has been written) for the currently executing trace.  If the data
+value in a register is invalid the corresponding reg_valid entry
+reg_valid[reg_num] will be set to false.  A register's state is accessible
+through the accessor function get_reg_state(uint reg_num) which returns the data
+value contained in the register.  The corresponding valid bit for a register is
+available through the accessor function is_reg_valid(uint reg_num) which returns
+true if the register is valid and false otherwise.  
+
+We anticipate that participants using this part of the framework will have more
+questions than other participants.  If you plan on using this part of the
+framework please contact us with any questions or suggestions you might have.
+It is difficult to predict what types of predictors participants will want to
+build so the op_state_c class may not be flexible enough to implement your
+predictor.  If you need changes to be made to the model, please let us know and
+we can discuss it.  
+
+!!!!!!!!!!!!!!!!
+!!! HAVE FUN !!!
+!!!!!!!!!!!!!!!!
+
+-- Chris and Jared
+

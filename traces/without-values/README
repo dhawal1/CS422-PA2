@@ -1,0 +1,8 @@
+// vim: textwidth=80
+
+The traces in this directory have had all their data values and memory addresses
+set to 0, and, as a result, they are 25 times smaller than the traces with data
+values and memory addresses.  If you need the traces with data values and memory
+addresses, they total approximately 550 megabytes, and you will need to download
+them separately and place them in the directory traces/with-values.
+
